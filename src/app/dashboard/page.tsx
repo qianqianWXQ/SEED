@@ -1,8 +1,8 @@
 'use client';
 
-import { redirect } from 'next/navigation';
 import { useRouter } from 'next/navigation';
-import { getCurrentUser, type User } from '../../lib/auth';
+import { type User } from '../../lib/auth';
+import { api } from '../../lib/api';
 import UserMenu from './UserMenu';
 import { useState, useEffect } from 'react';
 import { Layout, Menu, Statistic, Card, Spin, Button } from 'antd';
@@ -19,14 +19,13 @@ export default function DashboardPage() {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const userData = await getCurrentUser();
-        if (!userData) {
-          redirect('/auth/login');
-        } else {
-          setUser(userData);
-        }
+        // 使用安全API请求函数获取用户信息
+        // 这个请求会自动检查认证状态，如果未登录会重定向到登录页
+        const userData = await api.get<User>('/api/users');
+        setUser(userData);
       } catch (error) {
-        redirect('/auth/login');
+        console.error('获取用户信息错误:', error);
+        // api.get 会自动处理未登录情况的重定向
       } finally {
         setLoading(false);
       }

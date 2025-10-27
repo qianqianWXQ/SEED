@@ -6,6 +6,7 @@ import { Dropdown, Avatar, Button, message } from 'antd';
 import { UserOutlined, LogoutOutlined, SettingOutlined } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 import type { User } from '../../lib/auth';
+import { clearUserSession } from '../../lib/auth';
 
 interface UserMenuProps {
   user: User;
@@ -17,23 +18,15 @@ export default function UserMenu({ user }: UserMenuProps) {
   // 登出处理函数
   const handleLogout = async () => {
     try {
-      const response = await fetch('/api/auth/logout', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        // 登出成功，重定向到登录页面
-        router.replace('/auth/login');
-      } else {
-        message.error('登出失败: ' + (data.error || '未知错误'));
-      }
+      // 调用封装的清除会话函数
+      await clearUserSession();
+      
+      // 登出成功，重定向到登录页面
+      message.success('登出成功');
+      router.replace('/auth/login');
     } catch (error) {
-      message.error('登出请求错误');
+      message.error('登出失败，请稍后重试');
+      console.error('登出错误:', error);
     }
   };
 

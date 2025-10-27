@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Button, Table, Modal, Form, Input, Select, DatePicker, message, Spin, Tag } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { Task } from '../../../generated/prisma/client';
+import { api } from '../../../lib/api';
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -37,11 +38,8 @@ const TasksPage: React.FC = () => {
   const fetchTasks = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/tasks');
-      if (!response.ok) {
-        throw new Error('获取任务列表失败');
-      }
-      const data = await response.json();
+      // 使用安全API请求函数
+      const data = await api.get<TaskWithCreator[]>('/api/tasks');
       setTasks(data);
     } catch (error) {
       message.error('获取任务列表失败，请稍后重试');
@@ -53,6 +51,7 @@ const TasksPage: React.FC = () => {
 
   // 组件加载时获取任务列表
   useEffect(() => {
+    // api.get 会自动处理登录检查
     fetchTasks();
   }, []);
 
@@ -79,20 +78,8 @@ const TasksPage: React.FC = () => {
         dueDate: values.dueDate ? values.dueDate.toISOString() : undefined,
       };
 
-      const response = await fetch('/api/tasks', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(taskData),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || '创建任务失败');
-      }
-
-      const newTask = await response.json();
+      // 使用安全API请求函数
+      const newTask = await api.post<TaskWithCreator>('/api/tasks', taskData);
       message.success('任务创建成功');
       
       // 更新任务列表
@@ -101,8 +88,9 @@ const TasksPage: React.FC = () => {
       // 关闭模态框并重置表单
       setIsModalVisible(false);
       form.resetFields();
-    } catch (error: any) {
-      message.error(error.message || '创建任务失败，请稍后重试');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      message.error(errorMessage || '创建任务失败，请稍后重试');
       console.error('创建任务错误:', error);
     } finally {
       setSubmitting(false);

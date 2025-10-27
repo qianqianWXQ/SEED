@@ -33,24 +33,36 @@ export async function GET() {
       );
     }
 
-    // 从数据库获取用户信息
-    const user = await prisma.user.findUnique({
-      where: { id: sessionData.userId },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
+    // 尝试从数据库获取用户信息
+    let user;
+    try {
+      user = await prisma.user.findUnique({
+        where: { id: sessionData.userId },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+    } catch (dbError) {
+      // 数据库错误时，记录但不中断流程
+      console.warn('数据库查询失败，使用会话数据:', dbError);
+    }
 
+    // 如果数据库中没有找到用户，使用会话中的用户信息
     if (!user) {
-      return NextResponse.json(
-        { error: '用户不存在' },
-        { status: 404 }
-      );
+      // 从会话数据构建用户对象，添加必要的时间戳
+      user = {
+        id: sessionData.userId,
+        name: sessionData.name,
+        email: sessionData.email,
+        role: sessionData.role,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
     }
 
     return NextResponse.json(user, { status: 200 });

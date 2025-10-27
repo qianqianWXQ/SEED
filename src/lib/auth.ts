@@ -1,5 +1,4 @@
-// 移除next/headers依赖，使其在客户端和服务器端都可用
-
+// 用户接口定义
 export interface User {
   id: string;
   name: string;
@@ -7,22 +6,23 @@ export interface User {
   role: string;
 }
 
-// 模拟用户数据
-const mockUser: User = {
-  id: 'user123',
-  name: '模拟用户',
-  email: 'user@example.com',
-  role: 'user'
-};
-
 /**
  * 获取当前登录用户信息
  */
 export async function getCurrentUser(): Promise<User | null> {
   try {
-    // 在客户端环境中返回模拟数据
-    // 在实际应用中，您可以使用localStorage或其他客户端存储方式
-    return mockUser;
+    // 客户端环境下，通过API请求获取用户信息
+    const response = await fetch('/api/users', {
+      credentials: 'include', // 确保发送cookie
+    });
+    
+    if (response.ok) {
+      const userData = await response.json();
+      return userData;
+    }
+    
+    // 响应失败表示用户未登录或会话过期
+    return null;
   } catch (error) {
     console.error('获取当前用户错误:', error);
     return null;
@@ -41,6 +41,31 @@ export async function isAuthenticated(): Promise<boolean> {
  * 清除用户会话
  */
 export async function clearUserSession(): Promise<void> {
-  // 在客户端环境中，可以使用localStorage.clear()或其他方式
-  console.log('清除用户会话');
+  try {
+    // 调用登出API
+    await fetch('/api/auth/logout', {
+      method: 'POST',
+      credentials: 'include', // 确保发送cookie
+    });
+    
+    console.log('用户会话已清除');
+  } catch (error) {
+    console.error('清除用户会话错误:', error);
+  }
+}
+
+/**
+ * 检查用户是否登录的中间件函数
+ * 用于在发起请求前验证用户登录状态
+ */
+export async function checkAuthAndRedirect() {
+  const isAuth = await isAuthenticated();
+  if (!isAuth) {
+    // 在客户端环境中重定向
+    if (typeof window !== 'undefined') {
+      window.location.href = '/auth/login';
+    }
+    return false;
+  }
+  return true;
 }
