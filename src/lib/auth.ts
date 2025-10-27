@@ -1,5 +1,4 @@
-import { cookies } from 'next/headers';
-// 移除prisma依赖，使用模拟数据
+// 移除next/headers依赖，使其在客户端和服务器端都可用
 
 export interface User {
   id: string;
@@ -8,42 +7,21 @@ export interface User {
   role: string;
 }
 
+// 模拟用户数据
+const mockUser: User = {
+  id: 'user123',
+  name: '模拟用户',
+  email: 'user@example.com',
+  role: 'user'
+};
+
 /**
  * 获取当前登录用户信息
  */
 export async function getCurrentUser(): Promise<User | null> {
   try {
-    const cookieStore = await cookies();
-    const sessionCookie = cookieStore.get('user_session')?.value;
-
-    if (!sessionCookie) {
-      return null;
-    }
-
-    let sessionData;
-    try {
-      sessionData = JSON.parse(sessionCookie);
-    } catch (parseError) {
-      return null;
-    }
-
-    // 检查会话是否过期
-    if (new Date(sessionData.expires) < new Date()) {
-      // 可选：清除过期的cookie
-      const cookieStore = await cookies();
-      cookieStore.delete('user_session');
-      return null;
-    }
-
-    // 模拟从数据库获取用户信息
-    // 基于会话中的用户ID返回模拟数据
-    const mockUser: User = {
-      id: sessionData.userId,
-      name: sessionData.name || '模拟用户',
-      email: sessionData.email || 'user@example.com',
-      role: sessionData.role || 'user'
-    };
-
+    // 在客户端环境中返回模拟数据
+    // 在实际应用中，您可以使用localStorage或其他客户端存储方式
     return mockUser;
   } catch (error) {
     console.error('获取当前用户错误:', error);
@@ -63,6 +41,6 @@ export async function isAuthenticated(): Promise<boolean> {
  * 清除用户会话
  */
 export async function clearUserSession(): Promise<void> {
-  const cookieStore = await cookies();
-  cookieStore.delete('user_session');
+  // 在客户端环境中，可以使用localStorage.clear()或其他方式
+  console.log('清除用户会话');
 }

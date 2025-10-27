@@ -1,61 +1,115 @@
-import { redirect } from 'next/navigation';
-import { getCurrentUser } from '../../lib/auth';
-import UserMenu from './UserMenu';
+'use client';
 
-export default async function DashboardPage() {
-  const user = await getCurrentUser();
-  
-  if (!user) {
-    // 如果用户未登录，重定向到登录页面
-    redirect('/auth/login');
+import { redirect } from 'next/navigation';
+import { useRouter } from 'next/navigation';
+import { getCurrentUser, type User } from '../../lib/auth';
+import UserMenu from './UserMenu';
+import { useState, useEffect } from 'react';
+import { Layout, Menu, Statistic, Card, Spin } from 'antd';
+import { DashboardOutlined, SettingOutlined } from '@ant-design/icons';
+import type { MenuProps } from 'antd';
+
+const { Header, Content } = Layout;
+
+export default function DashboardPage() {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const userData = await getCurrentUser();
+        if (!userData) {
+          redirect('/auth/login');
+        } else {
+          setUser(userData);
+        }
+      } catch (error) {
+        redirect('/auth/login');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUser();
+  }, []);
+
+  if (loading || !user) {
+    return <div className="flex items-center justify-center h-screen">加载中...</div>;
   }
 
+  const router = useRouter();
   // 所有客户端交互逻辑已移至UserMenu组件
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* 导航栏 */}
-      <header className="bg-white shadow-sm">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center">
-            <span className="text-2xl font-bold text-blue-600">TaskFlow</span>
-          </div>
-          <nav className="hidden md:flex items-center space-x-6">
-            <a href="/dashboard" className="text-blue-600 font-medium">仪表盘</a>
-            <a href="#" className="text-gray-600 hover:text-blue-600">设置</a>
-          </nav>
-          <div className="relative">
-            <UserMenu user={user} />
-          </div>
-        </div>
-      </header>
+  // 导航菜单项
+  const navItems: MenuProps['items'] = [
+    {
+      key: 'dashboard',
+      icon: <DashboardOutlined />,
+      label: '仪表盘',
+      onClick: () => router.push('/dashboard'),
+    },
+    {
+      key: 'settings',
+      icon: <SettingOutlined />,
+      label: '设置',
+      onClick: () => {},
+    },
+  ];
 
-      {/* 主要内容 */}
-      <main className="container mx-auto px-4 py-8">
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">欢迎回来，{user.name}！</h1>
-          <p className="text-gray-600 mb-6">
-            这是您的TaskFlow仪表盘。您可以在这里管理您的任务、项目和团队。
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-blue-50 p-6 rounded-lg">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">总任务数</h3>
-              <p className="text-3xl font-bold text-blue-600">0</p>
-              <p className="text-sm text-gray-500 mt-2">任务管理功能即将上线</p>
-            </div>
-            <div className="bg-green-50 p-6 rounded-lg">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">进行中任务</h3>
-              <p className="text-3xl font-bold text-green-600">0</p>
-              <p className="text-sm text-gray-500 mt-2">开始创建您的第一个任务</p>
-            </div>
-            <div className="bg-purple-50 p-6 rounded-lg">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">完成率</h3>
-              <p className="text-3xl font-bold text-purple-600">0%</p>
-              <p className="text-sm text-gray-500 mt-2">追踪您的任务完成情况</p>
-            </div>
-          </div>
+  return (
+    <Layout className="min-h-screen">
+      <Header style={{ padding: 0, backgroundColor: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+        <div className="container mx-auto px-4 h-full flex items-center justify-between">
+          <div className="text-2xl font-bold text-blue-600">TaskFlow</div>
+          <Menu 
+            mode="horizontal" 
+            items={navItems} 
+            selectedKeys={['dashboard']}
+            className="border-none"
+            style={{ backgroundColor: 'transparent' }}
+          />
+          <UserMenu user={user} />
         </div>
-      </main>
-    </div>
+      </Header>
+
+      <Content style={{ padding: '24px' }}>
+        <div className="container mx-auto">
+          <Card className="shadow-sm">
+            <h1 className="text-3xl font-bold text-gray-900 mb-4">欢迎回来，{user.name}！</h1>
+            <p className="text-gray-600 mb-6">
+              这是您的TaskFlow仪表盘。您可以在这里管理您的任务、项目和团队。
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card>
+                <Statistic 
+                  title="总任务数" 
+                  value={0} 
+                  prefix={<span className="text-blue-600">📋</span>}
+                />
+                <p className="text-sm text-gray-500 mt-2">任务管理功能即将上线</p>
+              </Card>
+              <Card>
+                <Statistic 
+                  title="进行中任务" 
+                  value={0} 
+                  prefix={<span className="text-green-600">🔄</span>}
+                />
+                <p className="text-sm text-gray-500 mt-2">开始创建您的第一个任务</p>
+              </Card>
+              <Card>
+                <Statistic 
+                  title="完成率" 
+                  value={0} 
+                  suffix="%" 
+                  prefix={<span className="text-purple-600">✅</span>}
+                />
+                <p className="text-sm text-gray-500 mt-2">追踪您的任务完成情况</p>
+              </Card>
+            </div>
+          </Card>
+        </div>
+      </Content>
+    </Layout>
   );
 }
