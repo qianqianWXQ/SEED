@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import bcrypt from 'bcrypt';
-
-// 暂时跳过数据库调用，直接返回成功响应
+import prisma from '../../../../lib/prisma';
 
 export async function POST(request: Request) {
   try {
@@ -25,36 +24,39 @@ export async function POST(request: Request) {
       );
     }
 
-    // 模拟验证 - 对于这个示例，我们接受任何非空密码
-    if (!password || password.length < 6) {
+    // 验证密码长度
+    if (password.length < 6) {
       return NextResponse.json(
         { error: '密码长度至少为6个字符' },
         { status: 400 }
       );
     }
 
-    // 模拟用户数据
-    const mockUser = {
-      id: 'mock-id-123',
-      email: email,
-      name: email.split('@')[0],
-      role: 'user'
-    };
+    // 从数据库查找用户
+    const user = await prisma.user.findUnique({
+      where: { email },
+      select: { id: true, email: true, name: true, password: true, role: true }
+    });
+
+    // 验证用户存在且密码正确
+    if (!user || !(await bcrypt.compare(password, user.password))) {
+      return NextResponse.json(
+        { error: '邮箱或密码错误' },
+        { status: 401 }
+      );
+    }
 
     // 创建会话
     const sessionData = {
-      userId: mockUser.id,
-        name: mockUser.name,
-        email: mockUser.email,
-        role: mockUser.role,
+      userId: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
       expires: remember 
         ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7天
         : new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 1天
     };
 
-    // 在实际应用中，这里应该使用更安全的会话管理方式
-    // 例如使用JWT或者服务器端会话存储
-    
     // 设置会话cookie
     cookieStore.set({
       name: 'user_session',
@@ -69,10 +71,10 @@ export async function POST(request: Request) {
       { 
         message: '登录成功', 
         user: {
-          id: mockUser.id,
-          name: mockUser.name,
-          email: mockUser.email,
-          role: mockUser.role
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role
         }
       },
       { status: 200 }

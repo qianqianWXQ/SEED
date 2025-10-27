@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcrypt';
+import prisma from '../../../../lib/prisma';
 
-// 暂时跳过数据库调用，直接返回成功响应
 export async function POST(request: Request) {
   try {
     const { name, email, password } = await request.json();
@@ -30,15 +30,40 @@ export async function POST(request: Request) {
       );
     }
 
-    // 模拟成功响应
+    // 检查邮箱是否已存在
+    const existingUser = await prisma.user.findUnique({
+      where: { email }
+    });
+
+    if (existingUser) {
+      return NextResponse.json(
+        { error: '该邮箱已被注册' },
+        { status: 400 }
+      );
+    }
+
+    // 哈希密码
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // 创建用户
+    const user = await prisma.user.create({
+      data: {
+        name,
+        email,
+        password: hashedPassword,
+        role: 'USER' // 默认角色
+      },
+      select: { id: true, name: true, email: true, role: true }
+    });
+
     return NextResponse.json(
       { 
         message: '注册成功', 
         user: {
-          id: 'mock-id-123',
-          name,
-          email,
-          role: 'user'
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role
         }
       },
       { status: 201 }

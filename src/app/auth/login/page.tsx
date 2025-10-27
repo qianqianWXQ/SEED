@@ -21,6 +21,7 @@ export default function LoginPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(values),
+        credentials: 'include', // 确保正确存储cookie
       });
 
       const data = await response.json();
