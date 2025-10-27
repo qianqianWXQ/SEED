@@ -1,14 +1,16 @@
 import { redirect } from 'next/navigation';
 import { getCurrentUser } from '../../lib/auth';
+import UserMenu from './UserMenu';
 
 export default async function DashboardPage() {
-  // 获取当前登录用户信息
   const user = await getCurrentUser();
-
-  // 如果用户未登录，重定向到登录页面
+  
   if (!user) {
+    // 如果用户未登录，重定向到登录页面
     redirect('/auth/login');
   }
+
+  // 所有客户端交互逻辑已移至UserMenu组件
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -23,12 +25,7 @@ export default async function DashboardPage() {
             <a href="#" className="text-gray-600 hover:text-blue-600">设置</a>
           </nav>
           <div className="relative">
-            <button className="flex items-center space-x-2 text-gray-700 hover:text-blue-600">
-              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
-                {user.name.charAt(0).toUpperCase()}
-              </div>
-              <span className="hidden md:inline font-medium">{user.name}</span>
-            </button>
+            <UserMenu user={user} />
           </div>
         </div>
       </header>

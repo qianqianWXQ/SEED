@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
+/**
+ * 登出接口
+ * 清除用户会话和认证令牌
+ */
 export async function POST() {
   try {
     const cookieStore = await cookies();
@@ -8,8 +12,9 @@ export async function POST() {
     // 清除会话cookie
     cookieStore.delete('user_session');
 
+    // 返回要求的响应格式
     return NextResponse.json(
-      { message: '登出成功' },
+      { success: true },
       { status: 200 }
     );
   } catch (error) {
