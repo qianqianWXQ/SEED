@@ -5,13 +5,14 @@ import { useRouter } from 'next/navigation';
 import { getCurrentUser, type User } from '../../lib/auth';
 import UserMenu from './UserMenu';
 import { useState, useEffect } from 'react';
-import { Layout, Menu, Statistic, Card, Spin } from 'antd';
-import { DashboardOutlined, SettingOutlined } from '@ant-design/icons';
+import { Layout, Menu, Statistic, Card, Spin, Button } from 'antd';
+import { DashboardOutlined, SettingOutlined, AppstoreOutlined } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 
 const { Header, Content } = Layout;
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -37,8 +38,6 @@ export default function DashboardPage() {
   if (loading || !user) {
     return <div className="flex items-center justify-center h-screen">加载中...</div>;
   }
-
-  const router = useRouter();
   // 所有客户端交互逻辑已移至UserMenu组件
 
   // 导航菜单项
@@ -48,6 +47,12 @@ export default function DashboardPage() {
       icon: <DashboardOutlined />,
       label: '仪表盘',
       onClick: () => router.push('/dashboard'),
+    },
+    {
+      key: 'tasks',
+      icon: <AppstoreOutlined />,
+      label: '任务管理',
+      onClick: () => router.push('/dashboard/tasks'),
     },
     {
       key: 'settings',
@@ -80,6 +85,14 @@ export default function DashboardPage() {
             <p className="text-gray-600 mb-6">
               这是您的TaskFlow仪表盘。您可以在这里管理您的任务、项目和团队。
             </p>
+            <Button 
+              type="primary" 
+              size="large" 
+              className="mb-6" 
+              onClick={() => router.push('/dashboard/tasks')}
+            >
+              开始管理任务
+            </Button>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <Card>
                 <Statistic 
@@ -87,7 +100,14 @@ export default function DashboardPage() {
                   value={0} 
                   prefix={<span className="text-blue-600">📋</span>}
                 />
-                <p className="text-sm text-gray-500 mt-2">任务管理功能即将上线</p>
+                <p className="text-sm text-gray-500 mt-2">点击任务管理开始创建任务</p>
+                <Button 
+                  type="primary" 
+                  className="mt-3 w-full" 
+                  onClick={() => router.push('/dashboard/tasks')}
+                >
+                  前往任务管理
+                </Button>
               </Card>
               <Card>
                 <Statistic 
@@ -95,7 +115,7 @@ export default function DashboardPage() {
                   value={0} 
                   prefix={<span className="text-green-600">🔄</span>}
                 />
-                <p className="text-sm text-gray-500 mt-2">开始创建您的第一个任务</p>
+                <p className="text-sm text-gray-500 mt-2">您的任务进度一目了然</p>
               </Card>
               <Card>
                 <Statistic 
@@ -104,7 +124,7 @@ export default function DashboardPage() {
                   suffix="%" 
                   prefix={<span className="text-purple-600">✅</span>}
                 />
-                <p className="text-sm text-gray-500 mt-2">追踪您的任务完成情况</p>
+                <p className="text-sm text-gray-500 mt-2">有效管理提高工作效率</p>
               </Card>
             </div>
           </Card>

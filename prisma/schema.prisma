@@ -25,5 +25,25 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   
+  // 关联关系
+  tasks     Task[]
+  
   @@map("users")
+}
+
+model Task {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  priority    String   @default("medium") // low, medium, high, urgent
+  status      String   @default("pending") // pending, in-progress, completed
+  dueDate     DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // 关联关系
+  creator     User     @relation(fields: [creatorId], references: [id])
+  creatorId   String
+  
+  @@map("tasks")
 }
