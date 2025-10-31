@@ -15,14 +15,7 @@ export default function DashboardPage() {
             <p className="text-gray-600 mb-6">
               这是您的TaskFlow仪表盘。您可以在这里管理您的任务、项目和团队。
             </p>
-            <Button 
-              type="primary" 
-              size="large" 
-              className="mb-6" 
-              onClick={() => router.push('/dashboard/tasks')}
-            >
-              开始管理任务
-            </Button>
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <Card>
                 <Statistic 

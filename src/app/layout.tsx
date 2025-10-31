@@ -1,12 +1,16 @@
 import type { Metadata } from "next";
+// 在Next.js中使用标准的import语法导入CSS
 import "./globals.css";
 import React from 'react';
+
+// 优化：提前导入antd样式，确保样式加载优先
+import 'antd/dist/reset.css';
 
 // 创建客户端组件用于主题配置
 function ThemeProvider({ children }: { children: React.ReactNode }) {
   'use client';
   
-  // 使用动态导入避免服务器组件问题
+  // 导入ConfigProvider
   const { ConfigProvider } = require('antd');
   
   // 主题配置

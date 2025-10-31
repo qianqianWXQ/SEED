@@ -8,11 +8,8 @@ export async function secureFetch<T = unknown>(
   url: string,
   options: RequestInit = {}
 ): Promise<T> {
-  // 发起请求前检查登录状态
-  const isAuth = await checkAuthAndRedirect();
-  if (!isAuth) {
-    throw new Error('用户未登录或会话已过期');
-  }
+  // 移除请求前的认证检查，只保留响应401时的重定向处理
+  // 这样可以避免每次API请求都触发不必要的认证检查
 
   // 确保包含凭证信息（cookies）
   const fetchOptions: RequestInit = {

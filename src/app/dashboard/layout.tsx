@@ -2,7 +2,7 @@
 
 import { useRouter, usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
-import { Layout, Menu, Button, message } from 'antd';
+import { Layout, Menu, Button, message, Modal, ConfigProvider } from 'antd';
 import { DashboardOutlined, AppstoreOutlined, SettingOutlined, LogoutOutlined } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 import UserMenu from './UserMenu';
@@ -33,16 +33,36 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     fetchUser();
   }, []);
 
+  // 使用useState管理弹窗状态
+  const [logoutModalVisible, setLogoutModalVisible] = useState(false);
+
   // 登出处理函数 - 移到导航栏中
-  const handleLogout = async () => {
+  const handleLogout = () => {
+    // 显示弹窗
+    setLogoutModalVisible(true);
+  };
+
+  // 确认登出处理
+  const confirmLogout = async () => {
     try {
       await clearUserSession();
       message.success('登出成功');
-      router.replace('/auth/login');
+      // 使用window.location进行强制重定向，确保可靠的登出体验
+      window.location.href = '/auth/login';
     } catch (error) {
-      message.error('登出失败，请稍后重试');
       console.error('登出错误:', error);
+      message.error('登出失败，请稍后重试');
+      // 即使发生错误，也尝试重定向到登录页面
+      window.location.href = '/auth/login';
+    } finally {
+      // 关闭弹窗
+      setLogoutModalVisible(false);
     }
+  };
+
+  // 取消登出
+  const cancelLogout = () => {
+    setLogoutModalVisible(false);
   };
 
   // 导航菜单项
@@ -94,6 +114,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           
           {/* 右侧用户相关按钮 */}
           <div className="flex items-center space-x-4">
+            {/* 用户菜单 */}
+            <UserMenu user={user} />
             {/* 登出按钮 */}
             <Button 
               danger 
@@ -103,8 +125,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             >
               登出
             </Button>
-            {/* 用户菜单 */}
-            <UserMenu user={user} />
           </div>
         </div>
       </Header>
@@ -114,6 +134,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {children}
         </div>
       </Content>
+      
+      {/* 登出确认弹窗 - 使用组件方式而非静态方法 */}
+      <Modal
+        title="确认登出"
+        open={logoutModalVisible}
+        onOk={confirmLogout}
+        onCancel={cancelLogout}
+        okText="确定"
+        cancelText="取消"
+      >
+        <p>您确定要退出登录吗？</p>
+      </Modal>
     </Layout>
   );
 }

@@ -55,6 +55,26 @@ a:hover {
   padding: 24px;
 }
 
+/* 登录卡片样式 - 确保直接显示有样式的表单 */
+.auth-card {
+  background-color: #fff !important;
+  border-radius: 8px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+  opacity: 1 !important;
+  transition: none !important;
+  display: block !important;
+}
+
+/* 预加载关键样式 - 为Ant Design组件提供基本的回退样式 */
+.ant-form-item,
+.ant-input,
+.ant-btn-primary,
+.ant-card,
+.ant-checkbox {
+  box-sizing: border-box !important;
+  position: relative !important;
+}
+
 /* 卡片样式增强 */
 .ant-card {
   border-radius: 8px;
@@ -83,11 +103,7 @@ a:hover {
   }
 }
 
-.fade-in {
-  animation: fadeIn 0.3s ease-in-out;
-}
-
-/* 自定义滚动条 */
+/* 滚动条样式 */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -98,10 +114,10 @@ a:hover {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #d1d5db;
+  background: #888;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #9ca3af;
+  background: #555;
 }
