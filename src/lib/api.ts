@@ -84,6 +84,13 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify(data)
     }),
+    
+  patch: <T = unknown>(url: string, data?: unknown, options?: RequestInit) => 
+    secureFetch<T>(url, { 
+      ...options, 
+      method: 'PATCH',
+      body: JSON.stringify(data)
+    }),
   
   delete: <T = unknown>(url: string, options?: RequestInit) => 
     secureFetch<T>(url, { ...options, method: 'DELETE' })

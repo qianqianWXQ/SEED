@@ -7,6 +7,7 @@ interface CreateTaskRequest {
   title: string;
   description?: string;
   priority?: string;
+  status?: string;
   dueDate?: string;
 }
 
@@ -61,12 +62,22 @@ export async function POST(request: Request) {
       );
     }
 
+    // 验证状态（如果提供）
+    const validStatuses = ['pending', 'in_progress', 'completed', 'cancelled'];
+    if (body.status && !validStatuses.includes(body.status)) {
+      return NextResponse.json(
+        { error: '无效的任务状态' },
+        { status: 400 }
+      );
+    }
+
     // 创建任务
     const task = await prisma.task.create({
       data: {
         title: body.title,
         description: body.description || '',
         priority: body.priority || 'medium',
+        status: (body.status || 'pending') as any, // 转换为枚举类型
         dueDate: body.dueDate ? new Date(body.dueDate) : null,
         creatorId: sessionData.userId,
       },
