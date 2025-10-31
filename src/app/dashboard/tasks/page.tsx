@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Button, Table, Modal, Form, Input, Select, DatePicker, message, Spin, Tag } from 'antd';
+import { Button, Table, Modal, Form, Input, Select, DatePicker, message, Spin, Tag, Card } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { Task } from '../../../generated/prisma/client';
 import { api } from '../../../lib/api';
@@ -177,9 +177,8 @@ const TasksPage: React.FC = () => {
   ];
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">任务管理</h1>
+    <Card className="shadow-sm p-6">
+      <div className="flex justify-end items-center mb-6">
         <Button 
           type="primary" 
           icon={<PlusOutlined />}
@@ -266,7 +265,7 @@ const TasksPage: React.FC = () => {
           </div>
         </Form>
       </Modal>
-    </div>
+    </Card>
   );
 };
 
