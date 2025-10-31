@@ -1,3 +1,6 @@
+/* 引入 TailwindCSS 基础样式 */
+@import 'tailwindcss';
+
 /* 引入 Ant Design 全局样式重置 */
 @import 'antd/dist/reset.css';
 

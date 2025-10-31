@@ -45,7 +45,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="h-screen w-screen flex items-center justify-center bg-gray-50">
       <Card 
         title={<div className="text-center text-2xl font-bold">TaskFlow</div>}
         extra={<p className="text-gray-500">登录您的账号</p>}

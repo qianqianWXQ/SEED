@@ -30,7 +30,7 @@ export default function UserMenu({ user }: UserMenuProps) {
     }
   };
 
-  // 菜单项
+  // 菜单项 - 移除登出选项，因为已移至导航栏
   const menuItems: MenuProps['items'] = [
     {
       key: 'profile',
@@ -43,13 +43,6 @@ export default function UserMenu({ user }: UserMenuProps) {
       label: '设置',
       icon: <SettingOutlined />,
       onClick: () => message.info('设置功能即将上线'),
-    },
-    {
-      key: 'logout',
-      label: '登出',
-      danger: true,
-      icon: <LogoutOutlined />,
-      onClick: handleLogout,
     },
   ];
 
