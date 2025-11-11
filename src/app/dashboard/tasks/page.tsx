@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button, Table, Form, Input, Select, DatePicker, message, Spin, Tag, Card, Modal } from 'antd';
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -48,8 +48,8 @@ const TasksPage: React.FC = () => {
     isLoading
   } = useTaskEditing();
 
-  // 获取任务列表
-  const fetchTasks = async () => {
+  // 获取任务列表 - 使用useCallback包装以保持函数引用稳定
+  const fetchTasks = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -86,7 +86,7 @@ const TasksPage: React.FC = () => {
     } finally {  
       setLoading(false);
     }
-  };
+  }, [filters, sortField, sortOrder]);
 
   // 组件加载时获取任务列表
   useEffect(() => {
