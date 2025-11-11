@@ -103,7 +103,7 @@ export async function POST(request: Request) {
 }
 
 // 获取任务列表
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const cookieStore = await cookies();
     const sessionCookie = cookieStore.get('user_session')?.value;
@@ -133,9 +133,33 @@ export async function GET() {
       );
     }
 
+    // 解析查询参数
+    const url = new URL(request.url);
+    const priorityParams = url.searchParams.getAll('priority');
+    const statusParams = url.searchParams.getAll('status');
+    const titleParam = url.searchParams.get('title');
+    
+    // 构建过滤条件
+    const whereClause: any = { creatorId: sessionData.userId };
+    
+    // 添加优先级过滤
+    if (priorityParams.length > 0) {
+      whereClause.priority = { in: priorityParams };
+    }
+    
+    // 添加状态过滤
+    if (statusParams.length > 0) {
+      whereClause.status = { in: statusParams };
+    }
+    
+    // 添加标题过滤（模糊匹配）
+    if (titleParam && titleParam.trim() !== '') {
+      whereClause.title = { contains: titleParam.trim() };
+    }
+
     // 获取用户创建的任务
     const tasks = await prisma.task.findMany({
-      where: { creatorId: sessionData.userId },
+      where: whereClause,
       orderBy: { createdAt: 'desc' },
       include: {
         creator: {

@@ -1,7 +1,7 @@
 'use client';
 
 import { ColumnsType } from 'antd/es/table';
-import { Tag } from 'antd';
+import { Tag, Select } from 'antd';
 import type { TaskWithCreator } from './page';
 
 // 获取优先级标签颜色
@@ -48,8 +48,14 @@ export const getStatusText = (status: string): string => {
   return textMap[status] || status;
 };
 
+// 表格列配置接口
+interface ColumnConfig {
+  isEditing?: (rowKey: string, field: string) => boolean;
+  updateEditingValue?: (value: any) => void;
+}
+
 // 表格列定义
-export const createColumns = (): ColumnsType<TaskWithCreator> => [
+export const createColumns = (config?: ColumnConfig): ColumnsType<TaskWithCreator> => [
   {
     title: '标题',
     dataIndex: 'title',
@@ -66,10 +72,34 @@ export const createColumns = (): ColumnsType<TaskWithCreator> => [
     title: '优先级',
     dataIndex: 'priority',
     key: 'priority',
-    render: function(priority: string) {
-      // 使用Ant Design的Tag组件渲染优先级
+    // 为优先级列添加编辑功能的onCell配置
+    onCell: (record: TaskWithCreator) => ({
+      record,
+      dataIndex: 'priority',
+      title: '优先级',
+    }),
+    render: function(priority: string, record: TaskWithCreator, index: number) {
+      // 如果正在编辑，显示下拉框
+      if (config?.isEditing?.(record.id, 'priority')) {
+        return (
+          <Select
+            value={priority}
+            style={{ width: '100%' }}
+            onChange={(value) => config?.updateEditingValue?.(value)}
+            onClick={(e) => e.stopPropagation()}
+            showArrow
+            open
+          >
+            <Select.Option value="low">低</Select.Option>
+            <Select.Option value="medium">中</Select.Option>
+            <Select.Option value="high">高</Select.Option>
+            <Select.Option value="urgent">紧急</Select.Option>
+          </Select>
+        );
+      }
+      // 正常显示时使用Ant Design的Tag组件渲染优先级
       return (
-        <Tag color={getPriorityColor(priority)}>
+        <Tag color={getPriorityColor(priority)} style={{ cursor: 'pointer' }}>
           {getPriorityText(priority)}
         </Tag>
       );

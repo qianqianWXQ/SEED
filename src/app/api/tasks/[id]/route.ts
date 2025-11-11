@@ -7,6 +7,7 @@ interface UpdateTaskRequest {
   description?: string;
   status?: string;
   dueDate?: string;
+  priority?: string;
 }
 
 // 有效的任务状态列表
@@ -116,8 +117,9 @@ async function updateTask(
       where: { id: taskId },
       data: {
         description: body.description,
-        status: body.status as any, // 转换为枚举类型
+        status: body.status as typeof validStatuses[number], // 使用更具体的类型断言
         dueDate: body.dueDate ? new Date(body.dueDate) : existingTask.dueDate,
+        priority: body.priority,
       },
       include: {
         creator: {

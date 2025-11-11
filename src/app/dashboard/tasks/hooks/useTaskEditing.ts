@@ -9,7 +9,7 @@ import { api } from '../../../../lib/api';
 interface EditState {
   editingRowKey: string | null;
   editingField: string | null;
-  editingValue: any;
+  editingValue: string | null | undefined;
   loadingRowKeys: Set<string>;
 }
 
@@ -28,7 +28,7 @@ export const useTaskEditing = () => {
   /**
    * 开始编辑
    */
-  const startEditing = useCallback((rowKey: string, field: string, initialValue: any) => {
+  const startEditing = useCallback((rowKey: string, field: string, initialValue: string | null | undefined) => {
     setEditState(prev => ({
       ...prev,
       editingRowKey: rowKey,
@@ -52,7 +52,7 @@ export const useTaskEditing = () => {
   /**
    * 更新编辑值
    */
-  const updateEditingValue = useCallback((value: any) => {
+  const updateEditingValue = useCallback((value: string | null | undefined) => {
     setEditState(prev => ({
       ...prev,
       editingValue: value,
@@ -69,38 +69,51 @@ export const useTaskEditing = () => {
   const saveEdit = useCallback(async (
     taskId: string,
     field: string,
-    value: any,
+    value: string | null | undefined,
     onSuccess?: () => void
   ) => {
     try {
       // 添加到加载中的行
       setEditState(prev => ({
         ...prev,
-        loadingRowKeys: new Set([...prev.loadingRowKeys, taskId]),
-      }));
+      loadingRowKeys: new Set([...prev.loadingRowKeys, taskId]),
+    }));
 
-      // 准备更新数据
-      const updateData: Record<string, any> = {};
-      
-      if (field === 'description') {
-        updateData.description = value;
-      } else if (field === 'status') {
-        updateData.status = value;
-      } else if (field === 'dueDate') {
-        updateData.dueDate = value ? value.toISOString() : null;
-      }
+    // 准备更新数据
+    const updateData: Record<string, string | null | undefined> = {};
+    
+    if (field === 'description') {
+      updateData.description = value;
+    } else if (field === 'status') {
+      updateData.status = value;
+    } else if (field === 'priority') {
+      updateData.priority = value;
+    } else if (field === 'dueDate') {
+      // 确保类型安全，只对Date对象调用toISOString
+      updateData.dueDate = value 
+        ? typeof value === 'string' 
+          ? value 
+          : value instanceof Date 
+            ? value.toISOString() 
+            : null
+        : null;
+    }
 
       // 调用API更新任务
       await api.patch(`/api/tasks/${taskId}`, updateData);
       message.success('更新成功');
       
-      // 重置编辑状态
-      setEditState(prev => ({
-        editingRowKey: null,
-        editingField: null,
-        editingValue: '',
-        loadingRowKeys: new Set(prev.loadingRowKeys),
-      }));
+      // 重置编辑状态并移除加载状态
+      setEditState(prev => {
+        const newLoadingRowKeys = new Set(prev.loadingRowKeys);
+        newLoadingRowKeys.delete(taskId);
+        return {
+          editingRowKey: null,
+          editingField: null,
+          editingValue: '',
+          loadingRowKeys: newLoadingRowKeys,
+        };
+      });
 
       // 调用成功回调
       if (onSuccess) {
