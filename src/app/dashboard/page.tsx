@@ -42,12 +42,18 @@ export default function DashboardPage() {
               </Card>
               <Card>
                 <Statistic 
-                  title="完成率" 
-                  value={0} 
-                  suffix="%" 
-                  prefix={<span className="text-purple-600">✅</span>}
+                  title="工作摘要" 
+                  value="分析报告" 
+                  prefix={<span className="text-orange-600">📊</span>}
                 />
-                <p className="text-sm text-gray-500 mt-2">有效管理提高工作效率</p>
+                <p className="text-sm text-gray-500 mt-2">查看您的工作效率和成果分析</p>
+                <Button 
+                  type="primary" 
+                  className="mt-3 w-full" 
+                  onClick={() => router.push('/dashboard/summary')}
+                >
+                  查看摘要
+                </Button>
               </Card>
             </div>
           </Card>

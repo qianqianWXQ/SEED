@@ -3,7 +3,7 @@
 import { useRouter, usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { Layout, Menu, Button, message, Modal, ConfigProvider } from 'antd';
-import { DashboardOutlined, AppstoreOutlined, SettingOutlined, LogoutOutlined } from '@ant-design/icons';
+import { DashboardOutlined, AppstoreOutlined, SettingOutlined, LogoutOutlined, PieChartOutlined } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 import UserMenu from './UserMenu';
 import { type User } from '../../lib/auth';
@@ -78,6 +78,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       icon: <AppstoreOutlined />,
       label: '任务管理',
       onClick: () => router.push('/dashboard/tasks'),
+    },
+    {
+      key: 'summary',
+      icon: <PieChartOutlined />,
+      label: '工作摘要',
+      onClick: () => router.push('/dashboard/summary'),
     },
     {
       key: 'settings',
