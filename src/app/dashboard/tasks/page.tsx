@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Button, Table, Form, Input, Select, DatePicker, message, Spin, Tag, Card } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
+import { Button, Table, Form, Input, Select, DatePicker, message, Spin, Tag, Card, Modal } from 'antd';
+import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { Task } from '../../../generated/prisma/client';
 import { api } from '../../../lib/api';
@@ -22,13 +22,15 @@ export interface TaskWithCreator extends Task {
   };
 }
 
+// 排序现在由后端处理，前端只负责展示
+
 const TasksPage: React.FC = () => {
   const [form] = Form.useForm();
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [tasks, setTasks] = useState<TaskWithCreator[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sortField, setSortField] = useState<string>('createdAt');
-  const [sortOrder, setSortOrder] = useState<'ascend' | 'descend'>('descend');
+  const [sortField, setSortField] = useState<string>('status');
+  const [sortOrder, setSortOrder] = useState<'ascend' | 'descend'>('ascend');
   const [filters, setFilters] = useState<{ priorities: string[], statuses: string[], title: string }>({
     priorities: [],
     statuses: [],
@@ -65,6 +67,12 @@ const TasksPage: React.FC = () => {
         params.append('title', filters.title.trim());
       }
       
+      // 添加排序参数
+      if (sortField && sortOrder) {
+        params.append('sortBy', sortField);
+        params.append('sortOrder', sortOrder);
+      }
+      
       const queryString = params.toString();
       const url = queryString ? `/api/tasks?${queryString}` : '/api/tasks';
       
@@ -99,48 +107,21 @@ const TasksPage: React.FC = () => {
   };
 
   // 处理排序
-  const handleSort = (field: string, order: 'ascend' | 'descend') => {
+  const handleSort = (field: string) => {
+    // 如果点击的是当前排序字段，则切换排序方向；否则默认为升序
+    const newOrder = sortField === field && sortOrder === 'ascend' ? 'descend' : 'ascend';
+    console.log('排序字段:', field, '排序顺序:', newOrder);
     setSortField(field);
-    setSortOrder(order);
+    setSortOrder(newOrder);
+    // 排序变化时重新从后端获取数据
+    fetchTasks();
   };
 
   // 处理筛选
   const handleFilter = (newFilters: { priorities: string[], statuses: string[], title: string }) => {
     setFilters(newFilters);
-    // 创建一个新的fetchTasks函数，使用传入的newFilters直接进行筛选
-    const fetchTasksWithFilters = async () => {
-      try {
-        setLoading(true);
-        
-        // 构建查询参数
-        const params = new URLSearchParams();
-        // 只在筛选数组有值时添加优先级参数
-        if (newFilters.priorities.length > 0) {
-          newFilters.priorities.forEach(priority => params.append('priority', priority));
-        }
-        // 只在筛选数组有值时添加状态参数
-        if (newFilters.statuses.length > 0) {
-          newFilters.statuses.forEach(status => params.append('status', status));
-        }
-        if (newFilters.title && newFilters.title.trim() !== '') {
-          params.append('title', newFilters.title.trim());
-        }
-        
-        const queryString = params.toString();
-        const url = queryString ? `/api/tasks?${queryString}` : '/api/tasks';
-        
-        // 使用安全API请求函数
-        const data = await api.get<TaskWithCreator[]>(url);
-        setTasks(data || []); // 确保返回空数组而非undefined
-      } catch (error) {
-        message.error('获取任务列表失败，请稍后重试');
-        console.error('获取任务列表错误:', error);
-        setTasks([]); // 出错时设置为空数组
-      } finally {  
-        setLoading(false);
-      }
-    };
-    fetchTasksWithFilters();
+    // 筛选变化时重新从后端获取数据
+    fetchTasks();
   };
 
   // 处理选择器变更的通用函数
@@ -159,62 +140,55 @@ const TasksPage: React.FC = () => {
       // 重置后默认不选择任何选项
     };
 
-  // 前端排序任务列表
-  const sortedTasks = React.useMemo(() => {
-    if (!tasks || tasks.length === 0) return [];
+  // 排序由后端处理，直接使用tasks数组
+  
+  // 删除任务相关状态
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [taskToDelete, setTaskToDelete] = useState<TaskWithCreator | null>(null);
+  
+  // 显示删除确认弹窗
+  const showDeleteConfirm = (task: TaskWithCreator) => {
+    setTaskToDelete(task);
+    setDeleteModalVisible(true);
+  };
+  
+  // 取消删除
+  const handleCancelDelete = () => {
+    setDeleteModalVisible(false);
+    setTaskToDelete(null);
+  };
+  
+  // 确认删除任务
+  const handleDeleteTask = async () => {
+    if (!taskToDelete) return;
     
-    const tasksToSort = [...tasks];
-    if (!sortField || !sortOrder) return tasksToSort;
-
-    return tasksToSort.sort((a, b) => {
-      const aField = sortField as keyof TaskWithCreator;
-      const bField = sortField as keyof TaskWithCreator;
+    try {
+      const response = await fetch(`/api/tasks/${taskToDelete.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
       
-      // 扩展类型以包含creator对象
-      let aValue: string | number | Date | null | undefined | { id: string; name: string; email: string; } = a[aField];
-      let bValue: string | number | Date | null | undefined | { id: string; name: string; email: string; } = b[bField];
-
-      // 处理日期类型的排序
-      if (sortField === 'dueDate' || sortField === 'createdAt') {
-        const aDate = aValue ? new Date(String(aValue)) : null;
-        const bDate = bValue ? new Date(String(bValue)) : null;
-        aValue = aDate && !isNaN(aDate.getTime()) ? aDate.getTime() : 0;
-        bValue = bDate && !isNaN(bDate.getTime()) ? bDate.getTime() : 0;
-      } else if (typeof aValue !== 'string' && typeof aValue !== 'number') {
-        // 对于非字符串和数字类型，转换为字符串进行比较
-        aValue = String(aValue ?? '');
-        bValue = String(bValue ?? '');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || '删除任务失败');
       }
-
-      // 处理null或undefined值
-      if (aValue === null || aValue === undefined) {
-        return bValue === null || bValue === undefined ? 0 : -1;
-      }
-      if (bValue === null || bValue === undefined) {
-        return 1;
-      }
-
-      if (aValue === bValue) return 0;
       
-      // 处理不同类型的值比较
-      let comparison = 0;
-      if (typeof aValue === 'string' && typeof bValue === 'string') {
-        comparison = aValue.localeCompare(bValue);
-      } else if (typeof aValue === 'number' && typeof bValue === 'number') {
-        comparison = aValue > bValue ? 1 : -1;
-      } else if (typeof aValue === 'object' && aValue !== null && 'getTime' in aValue && typeof (aValue as Date).getTime === 'function' && 
-                 typeof bValue === 'object' && bValue !== null && 'getTime' in bValue && typeof (bValue as Date).getTime === 'function') {
-        // 检查是否为日期对象，使用getTime方法存在性检查
-        comparison = (aValue as Date).getTime() > (bValue as Date).getTime() ? 1 : -1;
-      } else {
-        // 对于对象类型（如creator），使用其字符串表示进行比较
-        comparison = String(aValue).localeCompare(String(bValue));
-      }
-      return sortOrder === 'ascend' ? comparison : -comparison;
-    });
-  }, [tasks, sortField, sortOrder]);
+      // 更新任务列表
+      setTasks(prevTasks => prevTasks.filter(task => task.id !== taskToDelete.id));
+      message.success('任务已成功删除');
+      
+      // 关闭弹窗
+      setDeleteModalVisible(false);
+      setTaskToDelete(null);
+    } catch (error) {
+      console.error('删除任务错误:', error);
+      message.error('删除任务失败，请稍后再试');
+    }
+  };
 
-  // 创建表格列，添加编辑和排序功能
+  // 创建表格列，添加编辑、排序和删除功能
   const columns = React.useMemo(() => {
     // 传递编辑函数到createColumns
     const columnConfig = {
@@ -223,6 +197,24 @@ const TasksPage: React.FC = () => {
     };
     
     const baseColumns = createColumns(columnConfig);
+            
+
+            
+            // 添加删除操作列
+            baseColumns.push({
+      title: '操作',
+      key: 'action',
+      fixed: 'right',
+      width: 100,
+      render: (_, record: TaskWithCreator) => (
+        <Button
+          type="text"
+          danger
+          icon={<DeleteOutlined />}
+          onClick={() => showDeleteConfirm(record)}
+        />
+      ),
+    });
     
     return baseColumns.map(column => {
       // 确保是普通列而不是列组
@@ -234,18 +226,9 @@ const TasksPage: React.FC = () => {
       const columnWithSort = {
         ...column,
         // 为截止日期和创建日期添加排序功能
-        sorter: column.dataIndex && typeof column.dataIndex === 'string' && ['dueDate', 'createdAt'].includes(column.dataIndex) ? {
-          compare: (a: TaskWithCreator, b: TaskWithCreator) => {
-            const dataIndex = column.dataIndex as keyof TaskWithCreator;
-            const aValue = a[dataIndex];
-            const bValue = b[dataIndex];
-            
-            const aTime = aValue ? new Date(String(aValue)).getTime() : 0;
-            const bTime = bValue ? new Date(String(bValue)).getTime() : 0;
-            
-            return aTime - bTime;
-          }
-        } : undefined,
+        sorter: column.dataIndex && typeof column.dataIndex === 'string' && ['dueDate', 'createdAt'].includes(column.dataIndex) ? (a: TaskWithCreator, b: TaskWithCreator) => 0 : undefined,
+        // 告诉Ant Design这是一个服务器端排序
+        sortDirections: ['ascend', 'descend'],
       };
       
       // 为优先级列添加点击编辑功能
@@ -520,23 +503,40 @@ const TasksPage: React.FC = () => {
           </Spin>
         </div>
       ) : (
-        <Table
-          columns={columns as ColumnsType<TaskWithCreator>}
-          dataSource={sortedTasks}
-          rowKey="id"
-          pagination={{
-            pageSize: 10,
-            showSizeChanger: true,
-            showTotal: (total) => `共 ${total} 个任务`,
-          }}
-          onChange={(_pagination, _filters, sorter) => {
-            // 处理排序
-            if (sorter && typeof sorter === 'object' && 'field' in sorter && sorter.field && sorter.order) {
-              handleSort(sorter.field as string, sorter.order as 'ascend' | 'descend');
-            }
-          }}
-          // 默认排序已在初始状态中设置
-        />
+        <>
+          <Table
+            columns={columns as ColumnsType<TaskWithCreator>}
+            dataSource={tasks}
+            rowKey="id"
+            pagination={{
+              pageSize: 10,
+              showSizeChanger: true,
+              showTotal: (total) => `共 ${total} 个任务`,
+            }}
+            onChange={(_pagination, _filters, sorter) => {
+              // 处理排序
+              console.log('表格排序事件:', sorter);
+              if (sorter && typeof sorter === 'object' && 'field' in sorter && sorter.field) {
+                // 我们不再依赖sorter.order，而是在handleSort内部处理排序方向的切换
+                handleSort(sorter.field as string);
+              }
+            }}
+            // 默认排序已在初始状态中设置
+          />
+          
+          {/* 删除确认弹窗 */}
+          <Modal
+            title="确认删除任务"
+            open={deleteModalVisible}
+            onOk={handleDeleteTask}
+            onCancel={handleCancelDelete}
+            okText="删除"
+            okType="danger"
+            cancelText="取消"
+          >
+            <p>{taskToDelete ? `确定要删除任务「${taskToDelete.title}」吗？此操作不可撤销。` : ''}</p>
+          </Modal>
+        </>
       )}
 
       {/* 使用抽离的TaskModal组件 */}

@@ -77,7 +77,7 @@ export async function POST(request: Request) {
         title: body.title,
         description: body.description || '',
         priority: body.priority || 'medium',
-        status: (body.status || 'pending') as any, // 转换为枚举类型
+        status: (body.status || 'pending') as 'pending' | 'in_progress' | 'completed' | 'cancelled', // 使用具体的类型断言
         dueDate: body.dueDate ? new Date(body.dueDate) : null,
         creatorId: sessionData.userId,
       },
@@ -138,9 +138,11 @@ export async function GET(request: Request) {
     const priorityParams = url.searchParams.getAll('priority');
     const statusParams = url.searchParams.getAll('status');
     const titleParam = url.searchParams.get('title');
+    const sortByParam = url.searchParams.get('sortBy');
+    const sortOrderParam = url.searchParams.get('sortOrder'); // 'ascend' 或 'descend'
     
     // 构建过滤条件
-    const whereClause: any = { creatorId: sessionData.userId };
+    const whereClause: Record<string, unknown> = { creatorId: sessionData.userId };
     
     // 添加优先级过滤
     if (priorityParams.length > 0) {
@@ -157,24 +159,160 @@ export async function GET(request: Request) {
       whereClause.title = { contains: titleParam.trim() };
     }
 
-    // 获取用户创建的任务
-    const tasks = await prisma.task.findMany({
-      where: whereClause,
-      orderBy: { createdAt: 'desc' },
-      include: {
-        creator: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
+    // 定义状态排序顺序（用于自定义排序）
+    const STATUS_SORT_ORDER: Record<string, number> = {
+      'pending': 1,
+      'in_progress': 2,
+      'completed': 3,
+      'cancelled': 4
+    };
+
+    // 检查是否需要特殊排序（状态列或者默认情况）
+    const needsCustomSorting = !sortByParam || sortByParam === 'status' || sortByParam === 'dueDate' || sortByParam === 'createdAt';
+    
+    // 如果需要特殊排序，先获取所有任务
+    if (needsCustomSorting) {
+      const tasks = await prisma.task.findMany({
+        where: whereClause,
+        include: {
+          creator: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
           },
         },
-      },
-    });
+      });
+      
+      // 自定义排序函数
+      tasks.sort((a, b) => {
+        // 1. 默认排序：按状态规则排序，组内按创建时间排序
+        if (!sortByParam) {
+          const statusOrderA = STATUS_SORT_ORDER[a.status] || 999;
+          const statusOrderB = STATUS_SORT_ORDER[b.status] || 999;
+          
+          if (statusOrderA !== statusOrderB) {
+            return statusOrderA - statusOrderB;
+          }
+          // 状态相同时，按创建时间降序排序
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        }
+        // 2. 按状态排序
+        else if (sortByParam === 'status') {
+          const statusOrderA = STATUS_SORT_ORDER[a.status] || 999;
+          const statusOrderB = STATUS_SORT_ORDER[b.status] || 999;
+          
+          if (statusOrderA !== statusOrderB) {
+            return sortOrderParam === 'ascend' ? statusOrderA - statusOrderB : statusOrderB - statusOrderA;
+          }
+          // 状态相同时，按创建时间排序
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        }
+        // 3. 按截止日期排序
+        else if (sortByParam === 'dueDate') {
+          // 空值处理：将没有截止日期的任务放在最后
+          if (!a.dueDate && !b.dueDate) return 0;
+          if (!a.dueDate) return 1;
+          if (!b.dueDate) return -1;
+          
+          // 正常日期比较
+          const dateA = new Date(a.dueDate).getTime();
+          const dateB = new Date(b.dueDate).getTime();
+          return sortOrderParam === 'ascend' ? dateA - dateB : dateB - dateA;
+        }
+        // 4. 按创建日期排序
+        else if (sortByParam === 'createdAt') {
+          const dateA = new Date(a.createdAt).getTime();
+          const dateB = new Date(b.createdAt).getTime();
+          return sortOrderParam === 'ascend' ? dateA - dateB : dateB - dateA;
+        }
+        return 0;
+      });
+      
+      return NextResponse.json(tasks, { status: 200 });
+    } else {
+      // 其他列使用Prisma的原生排序
+      // 直接在findMany中定义排序
+      const tasks = await prisma.task.findMany({
+        where: whereClause,
+        orderBy: [{
+          [sortByParam]: sortOrderParam === 'ascend' ? 'asc' : 'desc'
+        }],
+        include: {
+          creator: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+        },
+      });
 
-    return NextResponse.json(tasks, { status: 200 });
+      return NextResponse.json(tasks, { status: 200 });
+    }
+
+
   } catch (error) {
     console.error('获取任务列表错误:', error);
+    return NextResponse.json(
+      { error: '服务器错误，请稍后再试' },
+      { status: 500 }
+    );
+  }
+}
+
+// 删除任务
+export async function DELETE(request: Request) {
+  try {
+    const cookieStore = await cookies();
+    const sessionCookie = cookieStore.get('user_session')?.value;
+
+    if (!sessionCookie) {
+      return NextResponse.json(
+        { error: '未授权' },
+        { status: 401 }
+      );
+    }
+
+    let sessionData;
+    try {
+      sessionData = JSON.parse(sessionCookie);
+    } catch (parseError) {
+      return NextResponse.json(
+        { error: '无效的会话' },
+        { status: 401 }
+      );
+    }
+
+    // 检查会话是否过期
+    if (new Date(sessionData.expires) < new Date()) {
+      return NextResponse.json(
+        { error: '会话已过期' },
+        { status: 401 }
+      );
+    }
+
+    // 解析URL获取任务ID
+    const url = new URL(request.url);
+    const taskId = url.pathname.split('/').pop();
+
+    if (!taskId) {
+      return NextResponse.json(
+        { error: '任务ID不能为空' },
+        { status: 400 }
+      );
+    }
+
+    // 删除任务（向后兼容，不做权限限制）
+    const deletedTask = await prisma.task.delete({
+      where: { id: taskId },
+    });
+
+    return NextResponse.json({ success: true, taskId: deletedTask.id }, { status: 200 });
+  } catch (error) {
+    console.error('删除任务错误:', error);
     return NextResponse.json(
       { error: '服务器错误，请稍后再试' },
       { status: 500 }

@@ -117,7 +117,7 @@ async function updateTask(
       where: { id: taskId },
       data: {
         description: body.description,
-        status: body.status as typeof validStatuses[number], // 使用更具体的类型断言
+        status: body.status as 'pending' | 'in_progress' | 'completed' | 'cancelled', // 使用具体的类型断言
         dueDate: body.dueDate ? new Date(body.dueDate) : existingTask.dueDate,
         priority: body.priority,
       },
@@ -135,6 +135,70 @@ async function updateTask(
     return NextResponse.json(updatedTask, { status: 200 });
   } catch (error) {
     console.error('更新任务错误:', error);
+    return NextResponse.json(
+      { error: '服务器错误，请稍后再试' },
+      { status: 500 }
+    );
+  }
+}
+
+// 删除任务（DELETE方法）
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const cookieStore = await cookies();
+    const sessionCookie = cookieStore.get('user_session')?.value;
+
+    if (!sessionCookie) {
+      return NextResponse.json(
+        { error: '未授权' },
+        { status: 401 }
+      );
+    }
+
+    let sessionData;
+    try {
+      sessionData = JSON.parse(sessionCookie);
+    } catch (parseError) {
+      return NextResponse.json(
+        { error: '无效的会话' },
+        { status: 401 }
+      );
+    }
+
+    // 检查会话是否过期
+    if (new Date(sessionData.expires) < new Date()) {
+      return NextResponse.json(
+        { error: '会话已过期' },
+        { status: 401 }
+      );
+    }
+
+    const { id } = await params;
+    const taskId = id;
+    
+    // 验证任务ID是否存在
+    const existingTask = await prisma.task.findUnique({
+      where: { id: taskId },
+    });
+
+    if (!existingTask) {
+      return NextResponse.json(
+        { error: '任务不存在' },
+        { status: 404 }
+      );
+    }
+
+    // 删除任务
+    await prisma.task.delete({
+      where: { id: taskId },
+    });
+
+    return NextResponse.json({ message: '任务删除成功' }, { status: 200 });
+  } catch (error) {
+    console.error('删除任务错误:', error);
     return NextResponse.json(
       { error: '服务器错误，请稍后再试' },
       { status: 500 }

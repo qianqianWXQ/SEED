@@ -93,9 +93,7 @@ export const useTaskEditing = () => {
       updateData.dueDate = value 
         ? typeof value === 'string' 
           ? value 
-          : value instanceof Date 
-            ? value.toISOString() 
-            : null
+          : null
         : null;
     }
 
